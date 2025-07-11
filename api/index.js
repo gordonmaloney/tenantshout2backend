@@ -30,9 +30,11 @@ mongoose.connection.once("open", () => {
 
 // API routes
 // Note: Vercel mounts this file at /api, so routes become /api/<route>
+app.get("/", (req, res) => res.send("Express on Vercel"));
+
 app.use("/campaigns", campaignRoutes);
 app.use("/login", loginRoutes);
 app.use("/verify", verifyRoutes);
 
 // Export as a serverless function handler for Vercel
-module.exports = serverless(app); 
+module.exports = app;
