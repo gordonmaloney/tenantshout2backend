@@ -31,6 +31,8 @@ const CampaignSchema = new mongoose.Schema({
       },
     ],
   },
+},   {
+  timestamps: true, // ← adds createdAt and updatedAt
 });
 
 module.exports = mongoose.model("Campaign", CampaignSchema);
