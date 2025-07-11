@@ -7,9 +7,9 @@ const serverless = require("serverless-http");
 require("dotenv").config();
 
 // Route imports (adjust paths if necessary)
-const campaignRoutes = require("../routes/campaigns");
-const loginRoutes = require("../routes/login");
-const verifyRoutes = require("../routes/verify");
+const campaignRoutes = require("./routes/campaigns");
+const loginRoutes = require("./routes/login");
+const verifyRoutes = require("./routes/verify");
 
 const app = express();
 
@@ -29,9 +29,10 @@ mongoose.connection.once("open", () => {
 });
 
 // API routes
-app.use("/api/campaigns", campaignRoutes);
-app.use("/api/login", loginRoutes);
-app.use("/api/verify", verifyRoutes);
+// Note: Vercel mounts this file at /api, so routes become /api/<route>
+app.use("/campaigns", campaignRoutes);
+app.use("/login", loginRoutes);
+app.use("/verify", verifyRoutes);
 
 // Export as a serverless function handler for Vercel
-module.exports = serverless(app);
+module.exports = serverless(app); 
