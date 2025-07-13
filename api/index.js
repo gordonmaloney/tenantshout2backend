@@ -1,40 +1,56 @@
-// index.js (for Vercel serverless deployment)
+// index.js
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const serverless = require("serverless-http");
+const rateLimit = require("express-rate-limit");      // ← add this
 require("dotenv").config();
 
-// Route imports (adjust paths if necessary)
+// Route imports
 const campaignRoutes = require("../routes/campaigns");
 const loginRoutes = require("../routes/login");
 const verifyRoutes = require("../routes/verify");
 
 const app = express();
 
+// apply rate-limit to /campaigns
+const campaignsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,   // 15 minutes
+  max: 5,                   // limit each IP to 100 requests per window
+  standardHeaders: true,      // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false,       // Disable the `X-RateLimit-*` headers
+  message: {
+    error: "Too many requests to /campaigns, please try again later."
+  }
+});
+
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "50kb" }));
 app.use(bodyParser.json());
 
-// MongoDB connection
+// MongoDB connection…
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
-
-mongoose.connection.once("open", () => {
-  console.log("✅ Connected to MongoDB");
-});
+mongoose.connection.once("open", () => console.log("✅ Connected to MongoDB"));
 
 // API routes
-// Note: Vercel mounts this file at /api, so routes become /api/<route>
 app.get("/", (req, res) => res.send("Express on Vercel"));
 
-app.use("/campaigns", campaignRoutes);
-app.use("/login", loginRoutes);
+// attach the limiter *before* your campaign routes
+app.use("/campaigns", campaignsLimiter, campaignRoutes);
+
+// optional: different limits for login
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: "Too many login attempts, please wait 15 minutes." }
+});
+app.use("/login", loginLimiter, loginRoutes);
+
 app.use("/verify", verifyRoutes);
 
-// Export as a serverless function handler for Vercel
 module.exports = app;
