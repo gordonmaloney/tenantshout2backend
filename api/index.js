@@ -4,11 +4,12 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const serverless = require("serverless-http");
-const rateLimit = require("express-rate-limit");      // ← add this
+const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
 // Route imports
 const campaignRoutes = require("../routes/campaigns");
+const featuredCampaignsRoutes = require("../routes/featuredCampaigns");
 const loginRoutes = require("../routes/login");
 const verifyRoutes = require("../routes/verify");
 
@@ -16,13 +17,24 @@ const app = express();
 
 // apply rate-limit to /campaigns
 const campaignsLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000,   // 15 minutes
-  max: 100,                   // limit each IP to 100 requests per window
-  standardHeaders: true,      // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false,       // Disable the `X-RateLimit-*` headers
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 100, // limit each IP to 100 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
   message: {
-    error: "Too many requests to /campaigns, please try again later."
-  }
+    error: "Too many requests to /campaigns, please try again later.",
+  },
+});
+
+// (optional) apply rate-limit to /featured-campaigns
+const featuredLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: "Too many requests to /featured-campaigns, please try again later.",
+  },
 });
 
 // Middleware
@@ -43,11 +55,14 @@ app.get("/", (req, res) => res.send("Express on Vercel"));
 // attach the limiter *before* your campaign routes
 app.use("/campaigns", campaignsLimiter, campaignRoutes);
 
+// featured campaigns routes (singleton doc: GET + PUT)
+app.use("/featured-campaigns", featuredLimiter, featuredCampaignsRoutes);
+
 // optional: different limits for login
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
-  message: { error: "Too many login attempts, please wait 15 minutes." }
+  message: { error: "Too many login attempts, please wait 15 minutes." },
 });
 app.use("/login", loginLimiter, loginRoutes);
 
