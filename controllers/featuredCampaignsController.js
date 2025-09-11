@@ -1,13 +1,26 @@
+// controllers/featuredCampaignsController.js
 const mongoose = require("mongoose");
 const FeaturedCampaigns = require("../models/FeaturedCampaigns");
 
 exports.getFeaturedCampaigns = async (req, res) => {
   try {
-    const featured = await FeaturedCampaigns.findOne();
-    if (!featured) {
-      return res.status(404).json({ error: "No featured campaigns found" });
+    let doc = await FeaturedCampaigns.findOne()
+      .populate({
+        path: "featuredCampaigns",
+        // (optional) select only fields you need:
+        // select: "campaignId title slug heroImage createdAt"
+      })
+      .lean();
+
+    // Create the singleton if it doesn't exist
+    if (!doc) {
+      doc = await FeaturedCampaigns.create({ featuredCampaigns: [] });
+      // return the same shape
+      return res.json({ ...doc.toObject?.(), featuredCampaigns: [] });
     }
-    res.json(featured);
+
+    // doc.featuredCampaigns is now an array of FULL Campaign objects
+    res.json(doc);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -23,7 +36,7 @@ exports.updateFeaturedCampaigns = async (req, res) => {
         .json({ error: "`featuredCampaigns` must be an array" });
     }
 
-    // validate ObjectId format (optional, if you’re storing Campaign IDs)
+    // optional: validate ObjectIds
     const invalid = featuredCampaigns.filter(
       (id) => !mongoose.isValidObjectId(id)
     );
@@ -34,10 +47,15 @@ exports.updateFeaturedCampaigns = async (req, res) => {
     }
 
     const updated = await FeaturedCampaigns.findOneAndUpdate(
-      {}, // find the singleton doc
+      {}, // singleton doc
       { featuredCampaigns },
       { new: true, upsert: true, runValidators: true }
-    );
+    )
+      .populate({
+        path: "featuredCampaigns",
+        // select: "campaignId title slug heroImage createdAt"
+      })
+      .lean();
 
     res.json(updated);
   } catch (err) {
